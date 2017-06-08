@@ -236,11 +236,62 @@ ggplot(train_891, aes(x = Age, fill = factor(Survived))) + geom_histogram(bins=5
   ggtitle("Age Vs Survived")
 
 
+#Quick first submission
 
+submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+write.csv(submit, file = "submission_test_2.csv", row.names = FALSE)
+
+#Let's figure out what features "matter" --- using aggregate() + intuition
+
+prop.table(table(train$Sex, train$Survived),1)
+
+aggregate(Survived ~ Sex, data=train, FUN=sum)
+
+aggregate(Survived ~ Parch + Sex, data=train, FUN=sum)
+
+train
+
+aggregate(Survived ~ Parch + Pclass + Sex, data=train, FUN=sum)
+
+test$Survived
+survival_id$Survived
+
+aggregate(Survived ~ Parch + Pclass + Sex, data=train, FUN=sum)
+
+prop.table(table(train$Sex, train$Parch),1)
+
+153/233
+
+#Notice 65.6% females with 0 children Survived --- expected given less struggle to find kids etc. Compare to 61% female with 0 child initially.
+
+aggregate(Survived ~ Parch + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+
+#Very interesting comparision of Fare, Pclass, and Sex ---- perhaps we'll engineer a feature combinning class, fare, and Sex later
+
+aggregate(Survived ~ Fare_New + Pclass + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+
+test$Survived <- 0
+test$Survived[test$Sex == 'female'] <- 1
+test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
+
+submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+write.csv(submit, file = "submission_test_3.csv", row.names = FALSE)
+
+train$Fare
+
+
+
+train$Fare_New
 
 
 #Feataure Engineering Begins Here
 
+train
+
+
+#Beginning with algorithms
+
+library(rpart)
 
 
 dat <- data.frame(table(train_891$SibSp,train_891$Survived))
@@ -248,8 +299,40 @@ names(dat) <- c("SibSp","Survived","Count")
 ggplot(dat, aes(x=SibSp, y=Count, fill=Survived)) + geom_bar(stat="identity") + xlab("SibSp") 
 
 
+#Quick CART decision tree algorithm from Rpart to power through and subset passengers for us
+
+train$Fare <- as.numeric(train$Fare)
+
+
+test$Fare <- as.numeric(test$Fare)
 
 
 
+#Let's create new feature, called family size (combination of SibSp and Parch) and see what that gets us 
 
+
+train$Fam_Size <- train$SibSp + train$Parch
+test$Fam_Size <- test$SibSp + test$Parch
+
+
+
+fit <- rpart(Survived ~ Pclass + Sex + Age + Fare + Fam_Size,
+             data=train,
+             method="class")
+
+
+fancyRpartPlot(fit)
+
+summary(test)
+
+
+#Prediction scored .76007 (worse than manually earned 78%!)
+
+
+Prediction <- predict(fit, test, type = "class")
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+write.csv(submit, file = "rpart_dtree_3.csv", row.names = FALSE)
+
+
+#Let's create new feature, called family size (combination of SibSp and Parch) and see what that gets us
 
